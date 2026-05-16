@@ -1,0 +1,4 @@
+name: air_quality
+type: duckdb
+options:
+  filename: ../../../data/air_quality.duckdb

@@ -1,0 +1,81 @@
+name: Deploy Evidence Dashboard to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+# Required for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- 1. Python & DBT Setup ---
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # --- 2. Data Ingestion ---
+      - name: Run Ingestion Script
+        env:
+          AIRNOW_API_KEY: ${{ secrets.AIRNOW_API_KEY }}
+        run: python scripts/ingest_airnow.py
+
+      # --- 3. DBT Transformation ---
+      - name: Run dbt
+        working-directory: ./dbt
+        run: dbt run --profiles-dir .
+
+      # --- 4. Evidence Build ---
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          
+      - name: Install Node dependencies
+        working-directory: ./evidence
+        run: npm ci
+        
+      - name: Build Evidence Site
+        working-directory: ./evidence
+        # Note: --base /air/ tells Evidence it will be hosted at https://username.github.io/air/
+        run: |
+          npm run sources
+          npm run build -- --base /air/
+          
+      # --- 5. GitHub Pages Deployment ---
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./evidence/build
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
