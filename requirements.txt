@@ -3,3 +3,6 @@ dbt-duckdb
 pandas
 prophet
 fastmcp
+python-dotenv
+requests
+pyarrow
