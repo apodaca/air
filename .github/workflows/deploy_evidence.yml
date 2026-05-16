@@ -65,10 +65,9 @@ jobs:
         
       - name: Build Evidence Site
         working-directory: ./evidence
-        # Note: --base /air/ tells Evidence it will be hosted at https://username.github.io/air/
         run: |
           npm run sources
-          npm run build -- --base /air/
+          npm run build
           
       # --- 5. GitHub Pages Deployment ---
       - name: Upload artifact
